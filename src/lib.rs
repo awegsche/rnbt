@@ -39,6 +39,75 @@ pub enum NbtValue {
     End,
 }
 
+impl NbtValue {
+    pub fn matches_list(&self, list: &NbtList) -> bool {
+        match self {
+            NbtValue::Byte(_) => {
+                if let NbtList::Byte(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Boolean(_) => {
+                if let NbtList::Boolean(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Short(_) => {
+                if let NbtList::Short(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Int(_) => {
+                if let NbtList::Int(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Long(_) => {
+                if let NbtList::Long(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Float(_) => {
+                if let NbtList::Float(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::Double(_) => {
+                if let NbtList::Double(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::String(_) => {
+                if let NbtList::String(_) = list {
+                    true
+                } else {
+                    false
+                }
+            }
+            NbtValue::List(_) => false,
+            NbtValue::Compound(_) => false,
+            NbtValue::ByteArray(_) => false,
+            NbtValue::IntArray(_) => false,
+            NbtValue::LongArray(_) => false,
+            NbtValue::End => false,
+        }
+    }
+}
+
 impl NbtField {
     pub fn write_name<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_u16::<BigEndian>(self.name.len() as u16)?;
