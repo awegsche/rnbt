@@ -348,6 +348,20 @@ impl NbtField {
             _ => None,
         }
     }
+
+    pub fn get_path(&self, path: &[&str]) -> Option<&NbtField> {
+        let mut path = path.iter();
+        let mut child = Some(self);
+        while let Some(name) = path.next() {
+            if let Some(c) = child {
+                child = c.get(*name);
+            }
+            else {
+                return None;
+            }
+        }
+        child
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -370,6 +384,21 @@ pub enum NbtList {
 pub struct NbtField {
     pub name: String,
     pub value: NbtValue,
+}
+
+impl NbtField {
+    pub fn new_compound<S: Into<String>, F: Into<Vec<NbtField>>>(name: S, fields: F) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Compound(fields.into()),
+        }
+    }
+    pub fn new_i32<S: Into<String>>(name: S, i: i32) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Int(i)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -651,6 +680,24 @@ mod tests {
             name: "test".to_string(),
             value: NbtValue::Compound(compound),
         });
+    }
+
+    #[test]
+    fn compound_path_access() {
+
+        let root = NbtField::new_compound("test", vec![
+            NbtField::new_i32("int_a", 1 >> 16),
+            NbtField::new_i32("int_b", 1 >> 16),
+            NbtField::new_compound("the", vec![
+                NbtField::new_compound("path", vec![
+                    NbtField::new_i32("int_c", 1 >> 16),
+                    NbtField::new_i32("int_d", 1 >> 16),
+                ])
+            ])
+        ]);
+
+        assert_eq!(root.get_path(&["the", "path", "int_c"]), Some(&NbtField::new_i32("int_c", 1 >> 16)));
+
     }
 
     #[test]
