@@ -39,134 +39,112 @@ pub enum NbtValue {
     End,
 }
 
-impl NbtValue {
-    pub fn matches_list(&self, list: &NbtList) -> bool {
-        match self {
-            NbtValue::Byte(_) => {
-                if let NbtList::Byte(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Boolean(_) => {
-                if let NbtList::Boolean(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Short(_) => {
-                if let NbtList::Short(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Int(_) => {
-                if let NbtList::Int(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Long(_) => {
-                if let NbtList::Long(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Float(_) => {
-                if let NbtList::Float(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::Double(_) => {
-                if let NbtList::Double(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::String(_) => {
-                if let NbtList::String(_) = list {
-                    true
-                } else {
-                    false
-                }
-            }
-            NbtValue::List(_) => false,
-            NbtValue::Compound(_) => false,
-            NbtValue::ByteArray(_) => false,
-            NbtValue::IntArray(_) => false,
-            NbtValue::LongArray(_) => false,
-            NbtValue::End => false,
-        }
+// ---- public functions ---------------------------------------------------------------------------
+
+pub fn write_nbt<W: Write>(w: &mut W, root: &NbtField) -> Result<(), NbtError> {
+    Ok(root.write::<TagWriteFull, W>(w)?)
+}
+
+pub fn read_nbt<R: Read>(r: &mut R) -> Result<NbtField, NbtError> {
+    NbtField::read(r)
+}
+
+pub fn from_bytes(bytes: &[u8]) -> Result<NbtField, NbtError> {
+    let mut r = std::io::Cursor::new(bytes);
+    read_nbt(&mut r)
+}
+
+// ---- Write Trait --------------------------------------------------------------------------------
+pub trait TagWrite {
+    fn write<W: Write>(w: &mut W, tag: u8, name: &str) -> std::io::Result<()>;
+}
+
+struct TagWriteFull;
+struct TagWriteNone;
+
+impl TagWrite for TagWriteFull {
+    fn write<W: Write>(w: &mut W, tag: u8, name: &str) -> std::io::Result<()> {
+        w.write_u8(tag)?;
+        w.write_u16::<BigEndian>(name.len() as u16)?;
+        w.write_all(name.as_bytes())
     }
 }
 
+impl TagWrite for TagWriteNone {
+    fn write<W: Write>(_w: &mut W, _tag: u8, _name: &str) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+pub fn write_name<W: Write>(name: &str, w: &mut W) -> std::io::Result<()> {
+    w.write_u16::<BigEndian>(name.len() as u16)?;
+    w.write_all(name.as_bytes())
+}
+
+/*
+// ---- Read Trait ---------------------------------------------------------------------------------
+pub trait TagRead {
+    fn read_tag<R: Read>(&self, r: &mut R) -> Result<u8, NbtError>;
+    fn read_name<R: Read>(r: &mut R) -> Result<String, NbtError>;
+}
+
+struct TagReadFull;
+struct TagReadNone(u8);
+
+impl TagRead for TagReadFull {
+    fn read_tag<R: Read>(&self, r: &mut R) -> Result<u8, NbtError> {
+        Ok(r.read_u8()?)
+    }
+}
+
+impl TagRead for TagReadNone {
+    fn read_tag<R: Read>(&self, _r: &mut R) -> Result<u8, NbtError> {
+        Ok(self.0)
+    }
+    fn read_name<R: Read>(_r: &mut R) -> Result<String, NbtError> {
+        Ok(String::from(""))
+    }
+}
+*/
+
 impl NbtField {
-    pub fn write_name<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        w.write_u16::<BigEndian>(self.name.len() as u16)?;
-        w.write_all(self.name.as_bytes())
-    }
-
-    pub fn read_name<R: Read>(r: &mut R) -> Result<String, NbtError> {
-        let len = r.read_u16::<BigEndian>()?;
-        let mut buf = vec![0; len as usize];
-        r.read(&mut buf)?;
-        Ok(String::from_utf8(buf)?)
-    }
-
-    pub fn write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+    // ---- Read Write -----------------------------------------------------------------------------
+    pub fn write<T: TagWrite, W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         match &self.value {
             NbtValue::Byte(b) => {
-                w.write_u8(TAG_BYTE)?;
-                self.write_name(w)?;
+                T::write(w, TAG_BYTE, &self.name)?;
                 w.write_u8(*b)
             }
             NbtValue::Boolean(b) => {
-                w.write_u8(TAG_BYTE)?;
-                self.write_name(w)?;
+                T::write(w, TAG_BYTE, &self.name)?;
                 w.write_u8(if *b { 1 } else { 0 })
             }
             NbtValue::Short(s) => {
-                w.write_u8(TAG_SHORT)?;
-                self.write_name(w)?;
+                T::write(w, TAG_SHORT, &self.name)?;
                 w.write_i16::<BigEndian>(*s)
             }
             NbtValue::Int(i) => {
-                w.write_u8(TAG_INT)?;
-                self.write_name(w)?;
+                T::write(w, TAG_INT, &self.name)?;
                 w.write_i32::<BigEndian>(*i)
             }
             NbtValue::Long(l) => {
-                w.write_u8(TAG_LONG)?;
-                self.write_name(w)?;
+                T::write(w, TAG_LONG, &self.name)?;
                 w.write_i64::<BigEndian>(*l)
             }
             NbtValue::Float(f) => {
-                w.write_u8(TAG_FLOAT)?;
-                self.write_name(w)?;
+                T::write(w, TAG_FLOAT, &self.name)?;
                 w.write_f32::<BigEndian>(*f)
             }
             NbtValue::Double(d) => {
-                w.write_u8(TAG_DOUBLE)?;
-                self.write_name(w)?;
+                T::write(w, TAG_DOUBLE, &self.name)?;
                 w.write_f64::<BigEndian>(*d)
             }
             NbtValue::String(s) => {
-                w.write_u8(TAG_STRING)?;
-                self.write_name(w)?;
-                w.write_u16::<BigEndian>(s.len() as u16)?;
-                w.write_all(s.as_bytes())
+                T::write(w, TAG_STRING, &self.name)?;
+                write_string(&s, w)
             }
             NbtValue::List(l) => {
-                w.write_u8(TAG_LIST)?;
-                self.write_name(w)?;
+                T::write(w, TAG_LIST, &self.name)?;
                 match l {
                     NbtList::Byte(v) => {
                         w.write_u8(TAG_BYTE)?;
@@ -221,27 +199,39 @@ impl NbtField {
                         }
                         Ok(())
                     }
-                    NbtList::String(v) => w.write_i32::<BigEndian>(v.len() as i32),
+                    NbtList::String(v) => {
+                        w.write_u8(TAG_STRING)?;
+                        w.write_i32::<BigEndian>(v.len() as i32)?;
+                        for s in v {
+                            write_string(s, w)?;
+                        }
+                        Ok(())
+                    }
+                    NbtList::Compound(c) => {
+                        w.write_u8(TAG_COMPOUND)?;
+                        w.write_i32::<BigEndian>(c.len() as i32)?;
+                        for value in c {
+                            value.write::<TagWriteNone, W>(w)?;
+                        }
+                        Ok(())
+                    }
                     _ => Ok(()),
                 }
             }
             NbtValue::Compound(c) => {
-                w.write_u8(TAG_COMPOUND)?;
-                self.write_name(w)?;
+                T::write(w, TAG_COMPOUND, &self.name)?;
                 for value in c {
-                    value.write(w)?;
+                    value.write::<TagWriteFull, W>(w)?;
                 }
                 w.write_u8(TAG_END)
             }
             NbtValue::ByteArray(arr) => {
-                w.write_u8(TAG_BYTE_ARRAY)?;
-                self.write_name(w)?;
+                T::write(w, TAG_BYTE_ARRAY, &self.name)?;
                 w.write_i32::<BigEndian>(arr.len() as i32)?;
                 w.write_all(&arr)
             }
             NbtValue::IntArray(arr) => {
-                w.write_u8(TAG_INT_ARRAY)?;
-                self.write_name(w)?;
+                T::write(w, TAG_INT_ARRAY, &self.name)?;
                 w.write_i32::<BigEndian>(arr.len() as i32)?;
                 for i in arr {
                     w.write_i32::<BigEndian>(*i)?;
@@ -249,9 +239,7 @@ impl NbtField {
                 Ok(())
             }
             NbtValue::LongArray(arr) => {
-                w.write_u8(TAG_LONG_ARRAY)?;
-                self.write_name(w)?;
-                self.write_name(w)?;
+                T::write(w, TAG_LONG_ARRAY, &self.name)?;
                 w.write_i32::<BigEndian>(arr.len() as i32)?;
                 for i in arr {
                     w.write_i64::<BigEndian>(*i)?;
@@ -271,31 +259,31 @@ impl NbtField {
                 value: NbtValue::End,
             },
             TAG_BYTE => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Byte(r.read_u8()?),
             },
             TAG_SHORT => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Short(r.read_i16::<BigEndian>()?),
             },
             TAG_INT => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Int(r.read_i32::<BigEndian>()?),
             },
             TAG_LONG => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Long(r.read_i64::<BigEndian>()?),
             },
             TAG_FLOAT => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Float(r.read_f32::<BigEndian>()?),
             },
             TAG_DOUBLE => NbtField {
-                name: Self::read_name(r)?,
+                name: read_name(r)?,
                 value: NbtValue::Double(r.read_f64::<BigEndian>()?),
             },
             TAG_BYTE_ARRAY => {
-                let name = Self::read_name(r)?;
+                let name = read_name(r)?;
                 let len = r.read_i32::<BigEndian>()?;
                 let mut buf = vec![0; len as usize];
                 r.read(&mut buf)?;
@@ -305,106 +293,60 @@ impl NbtField {
                 }
             }
             TAG_STRING => {
-                let name = Self::read_name(r)?;
-                let len = r.read_u16::<BigEndian>()?;
-                let mut buf = vec![0; len as usize];
-                r.read(&mut buf)?;
+                let name = read_name(r)?;
                 NbtField {
                     name,
-                    value: NbtValue::String(String::from_utf8(buf)?),
+                    value: NbtValue::String(read_string(r)?),
                 }
             }
             TAG_LIST => {
-                let name = Self::read_name(r)?;
-                let tag = r.read_u8()?;
-                let len = r.read_i32::<BigEndian>()?;
-                match tag {
-                    TAG_BYTE => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_u8()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Byte(list)),
-                        }
-                    }
-                    TAG_SHORT => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_i16::<BigEndian>()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Short(list)),
-                        }
-                    }
-                    TAG_INT => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_i32::<BigEndian>()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Int(list)),
-                        }
-                    }
-                    TAG_LONG => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_i64::<BigEndian>()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Long(list)),
-                        }
-                    }
-                    TAG_FLOAT => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_f32::<BigEndian>()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Float(list)),
-                        }
-                    }
-                    TAG_DOUBLE => {
-                        let mut list = Vec::with_capacity(len as usize);
-                        for _ in 0..len {
-                            list.push(r.read_f64::<BigEndian>()?);
-                        }
-
-                        NbtField {
-                            name,
-                            value: NbtValue::List(NbtList::Double(list)),
-                        }
-                    }
-                    _ => panic!("Unknown tag: {}", tag),
+                let name = read_name(r)?;
+                NbtField {
+                    name,
+                    value: read_list(r)?,
                 }
             }
-            TAG_COMPOUND => {
-                let name = Self::read_name(r)?;
-                let mut fields = Vec::new();
-                loop {
-                    let field = NbtField::read(r)?;
-                    if field.value == NbtValue::End {
-                        break;
-                    }
-                    fields.push(field);
+            TAG_INT_ARRAY => {
+                let name = read_name(r)?;
+                let len = r.read_i32::<BigEndian>()?;
+                let mut buf = vec![0; len as usize];
+                for _ in 0..len {
+                    buf.push(r.read_i32::<BigEndian>()?);
                 }
                 NbtField {
                     name,
-                    value: NbtValue::Compound(fields),
+                    value: NbtValue::IntArray(buf),
+                }
+            }
+            TAG_COMPOUND => {
+                let name = read_name(r)?;
+                NbtField {
+                    name,
+                    value: read_compound(r)?,
+                }
+            }
+            TAG_LONG_ARRAY => {
+                let name = read_name(r)?;
+                let len = r.read_i32::<BigEndian>()?;
+                let mut buf = vec![0; len as usize];
+                for _ in 0..len {
+                    buf.push(r.read_i64::<BigEndian>()?);
+                }
+                NbtField {
+                    name,
+                    value: NbtValue::LongArray(buf),
                 }
             }
             _ => panic!("Unknown tag: {}", tag),
         })
+    }
+
+    // ---- Element Access -------------------------------------------------------------------------
+    pub fn get(&self, name: &str) -> Option<&NbtField> {
+        match &self.value {
+            NbtValue::Compound(fields) => fields.iter().find(|f| f.name == name),
+            _ => None,
+        }
     }
 }
 
@@ -418,6 +360,10 @@ pub enum NbtList {
     Float(Vec<f32>),
     Double(Vec<f64>),
     String(Vec<String>),
+    List(Vec<NbtValue>),
+    Compound(Vec<NbtField>),
+    LongArray(Vec<Vec<i64>>),
+    End,
 }
 
 #[derive(Debug, PartialEq)]
@@ -444,13 +390,132 @@ impl From<std::string::FromUtf8Error> for NbtError {
         NbtError::Utf8Error(value)
     }
 }
-
-pub fn write_nbt<W: Write>(w: &mut W, root: &NbtField) -> Result<(), NbtError> {
-    Ok(root.write(w)?)
+fn write_string<W: Write>(string: &str, writer: &mut W) -> std::io::Result<()> {
+    writer.write_u16::<BigEndian>(string.len() as u16)?;
+    writer.write_all(string.as_bytes())?;
+    Ok(())
 }
 
-pub fn read_nbt<R: Read>(r: &mut R) -> Result<NbtField, NbtError> {
-    NbtField::read(r)
+fn read_name<R: Read>(r: &mut R) -> Result<String, NbtError> {
+    let len = r.read_u16::<BigEndian>()?;
+    let mut buf = vec![0; len as usize];
+    r.read(&mut buf)?;
+    Ok(String::from_utf8(buf)?)
+}
+
+fn read_string<R: Read>(reader: &mut R) -> Result<String, NbtError> {
+    let len = reader.read_u16::<BigEndian>()?;
+    let mut buf = vec![0; len as usize];
+    reader.read(&mut buf)?;
+    Ok(String::from_utf8(buf)?)
+}
+
+fn read_compound<R: Read>(r: &mut R) -> Result<NbtValue, NbtError> {
+    let mut fields = Vec::new();
+    loop {
+        let field = NbtField::read(r)?;
+        if field.value == NbtValue::End {
+            break;
+        }
+        fields.push(field);
+    }
+
+    Ok(NbtValue::Compound(fields))
+}
+
+fn read_list<R: Read>(r: &mut R) -> Result<NbtValue, NbtError> {
+    let tag = r.read_u8()?;
+    let len = r.read_i32::<BigEndian>()?;
+    Ok(NbtValue::List(match tag {
+        TAG_BYTE => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_u8()?);
+            }
+            NbtList::Byte(list)
+        }
+        TAG_SHORT => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_i16::<BigEndian>()?);
+            }
+            NbtList::Short(list)
+        }
+        TAG_INT => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_i32::<BigEndian>()?);
+            }
+
+            NbtList::Int(list)
+        }
+        TAG_LONG => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_i64::<BigEndian>()?);
+            }
+
+            NbtList::Long(list)
+        }
+        TAG_FLOAT => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_f32::<BigEndian>()?);
+            }
+
+            NbtList::Float(list)
+        }
+        TAG_DOUBLE => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(r.read_f64::<BigEndian>()?);
+            }
+
+            NbtList::Double(list)
+        }
+        TAG_STRING => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(read_string(r)?)
+            }
+
+            NbtList::String(list)
+        }
+        TAG_LIST => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(read_list(r)?);
+            }
+
+            NbtList::List(list)
+        }
+        TAG_COMPOUND => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                list.push(NbtField {
+                    name: String::new(),
+                    value: read_compound(r)?,
+                });
+            }
+
+            NbtList::Compound(list)
+        }
+        TAG_LONG_ARRAY => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                let nlongs = r.read_i32::<BigEndian>()?;
+                let mut buf = vec![0; nlongs as usize];
+                for _ in 0..nlongs {
+                    buf.push(r.read_i64::<BigEndian>()?);
+                }
+                list.push(buf);
+            }
+
+            NbtList::LongArray(list)
+        }
+        TAG_END => NbtList::End,
+        _ => panic!("Unknown tag: {}", tag),
+    }))
 }
 
 #[cfg(test)]
@@ -534,18 +599,92 @@ mod tests {
             name: "test".to_string(),
             value: NbtValue::List(NbtList::Double(vec![1.0, 2.0, 3.0])),
         });
+        read_write_test(NbtField {
+            name: "test".to_string(),
+            value: NbtValue::List(NbtList::String(vec![
+                "1".to_owned(),
+                "2".to_owned(),
+                "3".to_owned(),
+            ])),
+        });
+        read_write_test(NbtField {
+            name: "test".to_string(),
+            value: NbtValue::List(NbtList::Compound(vec![
+                NbtField {
+                    name: "".to_string(),
+                    value: NbtValue::Compound(vec![
+                        NbtField {
+                            name: "int_a".to_string(),
+                            value: NbtValue::Int(1 >> 16),
+                        },
+                        NbtField {
+                            name: "int_b".to_string(),
+                            value: NbtValue::Int(42 >> 16),
+                        },
+                    ]),
+                },
+                NbtField {
+                    name: "".to_string(),
+                    value: NbtValue::Compound(vec![NbtField {
+                        name: "float".to_string(),
+                        value: NbtValue::Float(1.0),
+                    }]),
+                },
+            ])),
+        });
     }
 
     #[test]
     fn compound_read_write() {
-        let compound = vec![NbtField {
-            name: "int".to_string(),
-            value: NbtValue::Int(1 >> 16),
-        }];
+        let compound = vec![
+            NbtField {
+                name: "int_a".to_string(),
+                value: NbtValue::Int(1 >> 16),
+            },
+            NbtField {
+                name: "int_b".to_string(),
+                value: NbtValue::Int(42 >> 16),
+            },
+        ];
 
         read_write_test(NbtField {
             name: "test".to_string(),
             value: NbtValue::Compound(compound),
         });
+    }
+
+    #[test]
+    fn compound_access() {
+        let compound = vec![
+            NbtField {
+                name: "int_a".to_string(),
+                value: NbtValue::Int(1 >> 16),
+            },
+            NbtField {
+                name: "int_b".to_string(),
+                value: NbtValue::Int(42 >> 16),
+            },
+        ];
+
+        let root = NbtField {
+            name: "test".to_string(),
+            value: NbtValue::Compound(compound),
+        };
+
+        assert_eq!(
+            root.get("int_a"),
+            Some(&NbtField {
+                name: "int_a".to_string(),
+                value: NbtValue::Int(1 >> 16)
+            })
+        );
+        assert_eq!(
+            root.get("int_b"),
+            Some(&NbtField {
+                name: "int_b".to_string(),
+                value: NbtValue::Int(42 >> 16)
+            })
+        );
+        assert_eq!(root.get("int_c"), None);
     }
 }
