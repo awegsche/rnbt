@@ -9,7 +9,7 @@ use crate::utils::*;
 use crate::NbtError;
 use crate::NbtList;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct NbtField {
     pub name: String,
     pub value: NbtValue,
@@ -268,6 +268,17 @@ impl NbtField {
     pub fn get(&self, name: &str) -> Option<&NbtField> {
         match &self.value {
             NbtValue::Compound(fields) => fields.iter().find(|f| f.name == name),
+            _ => None,
+        }
+    }
+
+    /// Pulls a field out of the compound and returns it (the field is removed from the original compound).
+    pub fn swap_remove(&mut self, name: &str) -> Option<NbtField> {
+        match &mut self.value {
+            NbtValue::Compound(fields) => {
+                let idx = fields.iter().position(|f| f.name == name)?;
+                Some(fields.swap_remove(idx))
+            },
             _ => None,
         }
     }
