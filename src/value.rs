@@ -15,7 +15,7 @@ pub const TAG_COMPOUND: u8 = 10;
 pub const TAG_INT_ARRAY: u8 = 11;
 pub const TAG_LONG_ARRAY: u8 = 12;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NbtValue {
     Byte(u8),
     Boolean(bool),
