@@ -1,11 +1,11 @@
-use std::io::{Read,Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::io::{Read, Write};
 
 use crate::utils::TagWrite;
 use crate::value::NbtValue;
 
-use crate::value::*;
 use crate::utils::*;
+use crate::value::*;
 use crate::NbtError;
 use crate::NbtList;
 
@@ -25,7 +25,7 @@ impl NbtField {
     pub fn new_i32<S: Into<String>>(name: S, i: i32) -> NbtField {
         NbtField {
             name: name.into(),
-            value: NbtValue::Int(i)
+            value: NbtValue::Int(i),
         }
     }
 }
@@ -266,21 +266,12 @@ impl NbtField {
 
     // ---- Element Access -------------------------------------------------------------------------
     pub fn get(&self, name: &str) -> Option<&NbtField> {
-        match &self.value {
-            NbtValue::Compound(fields) => fields.iter().find(|f| f.name == name),
-            _ => None,
-        }
+        self.value.get(name)
     }
 
     /// Pulls a field out of the compound and returns it (the field is removed from the original compound).
     pub fn swap_remove(&mut self, name: &str) -> Option<NbtField> {
-        match &mut self.value {
-            NbtValue::Compound(fields) => {
-                let idx = fields.iter().position(|f| f.name == name)?;
-                Some(fields.swap_remove(idx))
-            },
-            _ => None,
-        }
+        self.value.swap_remove(name)
     }
 
     pub fn get_path(&self, path: &[&str]) -> Option<&NbtField> {
@@ -289,8 +280,7 @@ impl NbtField {
         while let Some(name) = path.next() {
             if let Some(c) = child {
                 child = c.get(*name);
-            }
-            else {
+            } else {
                 return None;
             }
         }

@@ -1,6 +1,5 @@
 use crate::{field::NbtField, list::NbtList};
 
-
 pub const TAG_END: u8 = 0;
 pub const TAG_BYTE: u8 = 1;
 pub const TAG_SHORT: u8 = 2;
@@ -33,6 +32,25 @@ pub enum NbtValue {
     End,
 }
 
+impl NbtValue {
+    pub fn get(&self, name: &str) -> Option<&NbtField> {
+        match self {
+            NbtValue::Compound(fields) => fields.iter().find(|f| f.name == name),
+            _ => None,
+        }
+    }
+
+    pub fn swap_remove(&mut self, name: &str) -> Option<NbtField> {
+        match self {
+            NbtValue::Compound(fields) => {
+                let idx = fields.iter().position(|f| f.name == name)?;
+                Some(fields.swap_remove(idx))
+            }
+            _ => None,
+        }
+    }
+}
+
 impl std::fmt::Display for NbtValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -51,7 +69,7 @@ impl std::fmt::Display for NbtValue {
                     write!(f, "{}, ", field)?;
                 }
                 write!(f, "}}")
-            },
+            }
             NbtValue::ByteArray(b) => write!(f, "byte[...]"),
             NbtValue::IntArray(i) => write!(f, "int[...]"),
             NbtValue::LongArray(l) => write!(f, "long[...]"),
