@@ -232,7 +232,7 @@ impl NbtField {
             TAG_INT_ARRAY => {
                 let name = read_name(r)?;
                 let len = r.read_i32::<BigEndian>()?;
-                let mut buf = vec![0; len as usize];
+                let mut buf = Vec::with_capacity(len as usize);
                 for _ in 0..len {
                     buf.push(r.read_i32::<BigEndian>()?);
                 }
@@ -251,13 +251,25 @@ impl NbtField {
             TAG_LONG_ARRAY => {
                 let name = read_name(r)?;
                 let len = r.read_i32::<BigEndian>()?;
-                let mut buf = vec![0; len as usize];
+                let mut buf = Vec::with_capacity(len as usize);
                 for _ in 0..len {
                     buf.push(r.read_i64::<BigEndian>()?);
                 }
                 NbtField {
                     name,
                     value: NbtValue::LongArray(buf),
+                }
+            }
+            TAG_INT_ARRAY => {
+                let name = read_name(r)?;
+                let len = r.read_i32::<BigEndian>()?;
+                let mut buf = Vec::with_capacity(len as usize);
+                for _ in 0..len {
+                    buf.push(r.read_i32::<BigEndian>()?);
+                }
+                NbtField {
+                    name,
+                    value: NbtValue::IntArray(buf),
                 }
             }
             _ => panic!("Unknown tag: {}", tag),
