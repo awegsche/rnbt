@@ -157,6 +157,18 @@ pub(crate) fn read_list<R: Read>(r: &mut R) -> Result<NbtValue, NbtError> {
 
             NbtList::LongArray(list)
         }
+        TAG_INT_ARRAY => {
+            let mut list = Vec::with_capacity(len as usize);
+            for _ in 0..len {
+                let nints = r.read_i32::<BigEndian>()?;
+                let mut buf = vec![0; nints as usize];
+                for _ in 0..nints {
+                    buf.push(r.read_i32::<BigEndian>()?);
+                }
+                list.push(buf);
+            }
+            NbtList::IntArray(list)
+        }
         TAG_END => NbtList::End,
         _ => panic!("Unknown tag: {}", tag),
     }))

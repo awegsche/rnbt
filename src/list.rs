@@ -13,6 +13,7 @@ pub enum NbtList {
     List(Vec<NbtValue>),
     Compound(Vec<NbtField>),
     LongArray(Vec<Vec<i64>>),
+    IntArray(Vec<Vec<i32>>),
     End,
 }
 
@@ -71,6 +72,13 @@ impl std::fmt::Display for NbtList {
                 }
             }
             NbtList::LongArray(list) => {
+                for l in list {
+                    for l in l {
+                        write!(f, "{}, ", l)?;
+                    }
+                }
+            }
+            NbtList::IntArray(list) => {
                 for l in list {
                     for l in l {
                         write!(f, "{}, ", l)?;
