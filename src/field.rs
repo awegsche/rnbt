@@ -1,13 +1,10 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
-use crate::utils::TagWrite;
-use crate::value::NbtValue;
+use crate::utils::{read_compound, read_list, read_name, read_string, write_list, write_string, TagWrite, TagWriteFull};
+use crate::value::{NbtValue, TAG_BYTE, TAG_BYTE_ARRAY, TAG_COMPOUND, TAG_DOUBLE, TAG_END, TAG_FLOAT, TAG_INT, TAG_INT_ARRAY, TAG_LIST, TAG_LONG, TAG_LONG_ARRAY, TAG_SHORT, TAG_STRING};
 
-use crate::utils::*;
-use crate::value::*;
 use crate::NbtError;
-use crate::NbtList;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct NbtField {
@@ -64,83 +61,9 @@ impl NbtField {
             }
             NbtValue::String(s) => {
                 T::write(w, TAG_STRING, &self.name)?;
-                write_string(&s, w)
+                write_string(s, w)
             }
-            NbtValue::List(l) => {
-                T::write(w, TAG_LIST, &self.name)?;
-                match l {
-                    NbtList::Byte(v) => {
-                        w.write_u8(TAG_BYTE)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        w.write_all(v)
-                    }
-                    NbtList::Boolean(v) => {
-                        w.write_u8(TAG_BYTE)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for b in v {
-                            w.write_u8(if *b { 1 } else { 0 })?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Short(v) => {
-                        w.write_u8(TAG_SHORT)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for s in v {
-                            w.write_i16::<BigEndian>(*s)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Int(v) => {
-                        w.write_u8(TAG_INT)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for i in v {
-                            w.write_i32::<BigEndian>(*i)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Long(v) => {
-                        w.write_u8(TAG_LONG)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for l in v {
-                            w.write_i64::<BigEndian>(*l)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Float(v) => {
-                        w.write_u8(TAG_FLOAT)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for f in v {
-                            w.write_f32::<BigEndian>(*f)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Double(v) => {
-                        w.write_u8(TAG_DOUBLE)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for d in v {
-                            w.write_f64::<BigEndian>(*d)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::String(v) => {
-                        w.write_u8(TAG_STRING)?;
-                        w.write_i32::<BigEndian>(v.len() as i32)?;
-                        for s in v {
-                            write_string(s, w)?;
-                        }
-                        Ok(())
-                    }
-                    NbtList::Compound(c) => {
-                        w.write_u8(TAG_COMPOUND)?;
-                        w.write_i32::<BigEndian>(c.len() as i32)?;
-                        for value in c {
-                            value.write::<TagWriteNone, W>(w)?;
-                        }
-                        Ok(())
-                    }
-                    _ => Ok(()),
-                }
-            }
+            NbtValue::List(l) => write_list::<T, W>(w, l, &self.name),
             NbtValue::Compound(c) => {
                 T::write(w, TAG_COMPOUND, &self.name)?;
                 for value in c {
@@ -151,7 +74,7 @@ impl NbtField {
             NbtValue::ByteArray(arr) => {
                 T::write(w, TAG_BYTE_ARRAY, &self.name)?;
                 w.write_i32::<BigEndian>(arr.len() as i32)?;
-                w.write_all(&arr)
+                w.write_all(arr)
             }
             NbtValue::IntArray(arr) => {
                 T::write(w, TAG_INT_ARRAY, &self.name)?;
@@ -209,7 +132,7 @@ impl NbtField {
                 let name = read_name(r)?;
                 let len = r.read_i32::<BigEndian>()?;
                 let mut buf = vec![0; len as usize];
-                r.read(&mut buf)?;
+                _ = r.read(&mut buf)?;
                 NbtField {
                     name,
                     value: NbtValue::ByteArray(buf),
@@ -260,18 +183,6 @@ impl NbtField {
                     value: NbtValue::LongArray(buf),
                 }
             }
-            TAG_INT_ARRAY => {
-                let name = read_name(r)?;
-                let len = r.read_i32::<BigEndian>()?;
-                let mut buf = Vec::with_capacity(len as usize);
-                for _ in 0..len {
-                    buf.push(r.read_i32::<BigEndian>()?);
-                }
-                NbtField {
-                    name,
-                    value: NbtValue::IntArray(buf),
-                }
-            }
             _ => panic!("Unknown tag: {}", tag),
         })
     }
@@ -287,11 +198,11 @@ impl NbtField {
     }
 
     pub fn get_path(&self, path: &[&str]) -> Option<&NbtField> {
-        let mut path = path.iter();
+        let path = path.iter();
         let mut child = Some(self);
-        while let Some(name) = path.next() {
+        for name in path {
             if let Some(c) = child {
-                child = c.get(*name);
+                child = c.get(name);
             } else {
                 return None;
             }

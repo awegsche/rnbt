@@ -29,11 +29,6 @@ impl TagWrite for TagWriteNone {
 }
 
 // ---- Helper functions ---------------------------------------------------------------------------
-pub(crate) fn write_name<W: Write>(name: &str, w: &mut W) -> std::io::Result<()> {
-    w.write_u16::<BigEndian>(name.len() as u16)?;
-    w.write_all(name.as_bytes())
-}
-
 pub(crate) fn write_string<W: Write>(string: &str, writer: &mut W) -> std::io::Result<()> {
     writer.write_u16::<BigEndian>(string.len() as u16)?;
     writer.write_all(string.as_bytes())?;
@@ -43,14 +38,14 @@ pub(crate) fn write_string<W: Write>(string: &str, writer: &mut W) -> std::io::R
 pub(crate) fn read_name<R: Read>(r: &mut R) -> Result<String, NbtError> {
     let len = r.read_u16::<BigEndian>()?;
     let mut buf = vec![0; len as usize];
-    r.read(&mut buf)?;
+    r.read_exact(&mut buf)?;
     Ok(String::from_utf8(buf)?)
 }
 
 pub(crate) fn read_string<R: Read>(reader: &mut R) -> Result<String, NbtError> {
     let len = reader.read_u16::<BigEndian>()?;
     let mut buf = vec![0; len as usize];
-    reader.read(&mut buf)?;
+    reader.read_exact(&mut buf)?;
     Ok(String::from_utf8(buf)?)
 }
 
@@ -172,4 +167,80 @@ pub(crate) fn read_list<R: Read>(r: &mut R) -> Result<NbtValue, NbtError> {
         TAG_END => NbtList::End,
         _ => panic!("Unknown tag: {}", tag),
     }))
+}
+
+pub(crate) fn write_list<T: TagWrite, W: Write>(w: &mut W, l: &NbtList, name: &str) -> std::io::Result<()> {
+    T::write(w, TAG_LIST, name)?;
+    match l {
+        NbtList::Byte(v) => {
+            w.write_u8(TAG_BYTE)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            w.write_all(v)
+        }
+        NbtList::Boolean(v) => {
+            w.write_u8(TAG_BYTE)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for b in v {
+                w.write_u8(if *b { 1 } else { 0 })?;
+            }
+            Ok(())
+        }
+        NbtList::Short(v) => {
+            w.write_u8(TAG_SHORT)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for s in v {
+                w.write_i16::<BigEndian>(*s)?;
+            }
+            Ok(())
+        }
+        NbtList::Int(v) => {
+            w.write_u8(TAG_INT)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for i in v {
+                w.write_i32::<BigEndian>(*i)?;
+            }
+            Ok(())
+        }
+        NbtList::Long(v) => {
+            w.write_u8(TAG_LONG)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for l in v {
+                w.write_i64::<BigEndian>(*l)?;
+            }
+            Ok(())
+        }
+        NbtList::Float(v) => {
+            w.write_u8(TAG_FLOAT)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for f in v {
+                w.write_f32::<BigEndian>(*f)?;
+            }
+            Ok(())
+        }
+        NbtList::Double(v) => {
+            w.write_u8(TAG_DOUBLE)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for d in v {
+                w.write_f64::<BigEndian>(*d)?;
+            }
+            Ok(())
+        }
+        NbtList::String(v) => {
+            w.write_u8(TAG_STRING)?;
+            w.write_i32::<BigEndian>(v.len() as i32)?;
+            for s in v {
+                write_string(s, w)?;
+            }
+            Ok(())
+        }
+        NbtList::Compound(c) => {
+            w.write_u8(TAG_COMPOUND)?;
+            w.write_i32::<BigEndian>(c.len() as i32)?;
+            for value in c {
+                value.write::<TagWriteNone, W>(w)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
 }

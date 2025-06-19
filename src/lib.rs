@@ -26,10 +26,3 @@ pub fn from_bytes(bytes: &[u8]) -> Result<NbtField, NbtError> {
     let mut r = std::io::Cursor::new(bytes);
     read_nbt(&mut r)
 }
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-}
