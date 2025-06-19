@@ -29,11 +29,6 @@ impl TagWrite for TagWriteNone {
 }
 
 // ---- Helper functions ---------------------------------------------------------------------------
-pub(crate) fn write_name<W: Write>(name: &str, w: &mut W) -> std::io::Result<()> {
-    w.write_u16::<BigEndian>(name.len() as u16)?;
-    w.write_all(name.as_bytes())
-}
-
 pub(crate) fn write_string<W: Write>(string: &str, writer: &mut W) -> std::io::Result<()> {
     writer.write_u16::<BigEndian>(string.len() as u16)?;
     writer.write_all(string.as_bytes())?;
@@ -50,7 +45,7 @@ pub(crate) fn read_name<R: Read>(r: &mut R) -> Result<String, NbtError> {
 pub(crate) fn read_string<R: Read>(reader: &mut R) -> Result<String, NbtError> {
     let len = reader.read_u16::<BigEndian>()?;
     let mut buf = vec![0; len as usize];
-    reader.read(&mut buf)?;
+    _ = reader.read(&mut buf)?;
     Ok(String::from_utf8(buf)?)
 }
 

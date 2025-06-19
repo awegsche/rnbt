@@ -1,11 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
-use crate::utils::TagWrite;
-use crate::value::NbtValue;
+use crate::utils::{read_compound, read_list, read_name, read_string, write_string, TagWrite, TagWriteFull, TagWriteNone};
+use crate::value::{NbtValue, TAG_BYTE, TAG_BYTE_ARRAY, TAG_COMPOUND, TAG_DOUBLE, TAG_END, TAG_FLOAT, TAG_INT, TAG_INT_ARRAY, TAG_LONG, TAG_LONG_ARRAY, TAG_LIST, TAG_SHORT, TAG_STRING};
 
-use crate::utils::*;
-use crate::value::*;
 use crate::NbtError;
 use crate::NbtList;
 
@@ -64,7 +62,7 @@ impl NbtField {
             }
             NbtValue::String(s) => {
                 T::write(w, TAG_STRING, &self.name)?;
-                write_string(&s, w)
+                write_string(s, w)
             }
             NbtValue::List(l) => {
                 T::write(w, TAG_LIST, &self.name)?;
@@ -151,7 +149,7 @@ impl NbtField {
             NbtValue::ByteArray(arr) => {
                 T::write(w, TAG_BYTE_ARRAY, &self.name)?;
                 w.write_i32::<BigEndian>(arr.len() as i32)?;
-                w.write_all(&arr)
+                w.write_all(arr)
             }
             NbtValue::IntArray(arr) => {
                 T::write(w, TAG_INT_ARRAY, &self.name)?;
@@ -209,7 +207,7 @@ impl NbtField {
                 let name = read_name(r)?;
                 let len = r.read_i32::<BigEndian>()?;
                 let mut buf = vec![0; len as usize];
-                r.read(&mut buf)?;
+                _ = r.read(&mut buf)?;
                 NbtField {
                     name,
                     value: NbtValue::ByteArray(buf),
@@ -260,18 +258,6 @@ impl NbtField {
                     value: NbtValue::LongArray(buf),
                 }
             }
-            TAG_INT_ARRAY => {
-                let name = read_name(r)?;
-                let len = r.read_i32::<BigEndian>()?;
-                let mut buf = Vec::with_capacity(len as usize);
-                for _ in 0..len {
-                    buf.push(r.read_i32::<BigEndian>()?);
-                }
-                NbtField {
-                    name,
-                    value: NbtValue::IntArray(buf),
-                }
-            }
             _ => panic!("Unknown tag: {}", tag),
         })
     }
@@ -287,11 +273,11 @@ impl NbtField {
     }
 
     pub fn get_path(&self, path: &[&str]) -> Option<&NbtField> {
-        let mut path = path.iter();
+        let path = path.iter();
         let mut child = Some(self);
-        while let Some(name) = path.next() {
+        for name in path {
             if let Some(c) = child {
-                child = c.get(*name);
+                child = c.get(name);
             } else {
                 return None;
             }
