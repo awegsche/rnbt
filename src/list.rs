@@ -1,6 +1,6 @@
 use crate::{field::NbtField, value::NbtValue};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NbtList {
     Byte(Vec<u8>),
     Boolean(Vec<bool>),

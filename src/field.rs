@@ -9,7 +9,7 @@ use crate::utils::*;
 use crate::NbtError;
 use crate::NbtList;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NbtField {
     pub name: String,
     pub value: NbtValue,
