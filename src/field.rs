@@ -4,9 +4,9 @@ use std::io::{Read, Write};
 use crate::utils::{read_compound, read_list, read_name, read_string, write_list, write_string, TagWrite, TagWriteFull};
 use crate::value::{NbtValue, TAG_BYTE, TAG_BYTE_ARRAY, TAG_COMPOUND, TAG_DOUBLE, TAG_END, TAG_FLOAT, TAG_INT, TAG_INT_ARRAY, TAG_LIST, TAG_LONG, TAG_LONG_ARRAY, TAG_SHORT, TAG_STRING};
 
-use crate::NbtError;
+use crate::{NbtError, NbtList};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NbtField {
     pub name: String,
     pub value: NbtValue,
@@ -22,7 +22,67 @@ impl NbtField {
     pub fn new_i32<S: Into<String>>(name: S, i: i32) -> NbtField {
         NbtField {
             name: name.into(),
-            value: NbtValue::Int(i),
+            value: NbtValue::Int(i)
+        }
+    }
+    pub fn new_string<S: Into<String>, T: Into<String>>(name: S, value: T) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::String(value.into()),
+        }
+    }
+    pub fn new_bool<S: Into<String>>(name: S, b: bool) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Boolean(b),
+        }
+    }
+    pub fn new_float<S: Into<String>>(name: S, f: f32) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Float(f),
+        }
+    }
+    pub fn new_double<S: Into<String>>(name: S, d: f64) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Double(d),
+        }
+    }
+    pub fn new_short<S: Into<String>>(name: S, s: i16) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Short(s),
+        }
+    }
+    pub fn new_long<S: Into<String>>(name: S, l: i64) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::Long(l),
+        }
+    }
+    pub fn new_byte_array<S: Into<String>>(name: S, arr: Vec<u8>) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::ByteArray(arr),
+        }
+    }
+    pub fn new_int_array<S: Into<String>>(name: S, arr: Vec<i32>) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::IntArray(arr),
+        }
+    }
+    pub fn new_long_array<S: Into<String>>(name: S, arr: Vec<i64>) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::LongArray(arr),
+        }
+    }
+    pub fn new_list<S: Into<String>, T: Into<NbtList>>(name: S, list: T) -> NbtField {
+        NbtField {
+            name: name.into(),
+            value: NbtValue::List(list.into()),
         }
     }
 }
@@ -188,15 +248,6 @@ impl NbtField {
     }
 
     // ---- Element Access -------------------------------------------------------------------------
-    pub fn get(&self, name: &str) -> Option<&NbtField> {
-        self.value.get(name)
-    }
-
-    /// Pulls a field out of the compound and returns it (the field is removed from the original compound).
-    pub fn swap_remove(&mut self, name: &str) -> Option<NbtField> {
-        self.value.swap_remove(name)
-    }
-
     pub fn get_path(&self, path: &[&str]) -> Option<&NbtField> {
         let path = path.iter();
         let mut child = Some(self);
@@ -209,6 +260,96 @@ impl NbtField {
         }
         child
     }
+
+    pub fn get(&self, name: &str) -> Option<&NbtField> {
+        match &self.value {
+            NbtValue::Compound(fields) => fields.iter().find(|f| f.name == name),
+            _ => None,
+        }
+    }
+
+
+    // ---- Convenience Access ---------------------------------------------------------------------
+    pub fn get_int(&self, name: &str) -> Option<i32> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Int(i) => Some(*i),
+            _ => None,
+        })
+    }
+    pub fn get_string(&self, name: &str) -> Option<&String> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::String(s) => Some(s),
+            _ => None,
+        })
+    }
+
+    pub fn get_bool(&self, name: &str) -> Option<bool> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Boolean(b) => Some(*b),
+            _ => None,
+        })
+    }
+    pub fn get_float(&self, name: &str) -> Option<f32> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Float(f) => Some(*f),
+            _ => None,
+        })
+    }
+    pub fn get_double(&self, name: &str) -> Option<f64> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Double(d) => Some(*d),
+            _ => None,
+        })
+    }
+    pub fn get_short(&self, name: &str) -> Option<i16> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Short(s) => Some(*s),
+            _ => None,
+        })
+    }
+    pub fn get_long(&self, name: &str) -> Option<i64> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Long(l) => Some(*l),
+            _ => None,
+        })
+    }
+    pub fn get_byte(&self, name: &str) -> Option<u8> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Byte(b) => Some(*b),
+            _ => None,
+        })
+    }
+    pub fn get_byte_array(&self, name: &str) -> Option<&Vec<u8>> {
+        self.get(name).and_then(|f| match &f.value {    
+            NbtValue::ByteArray(b) => Some(b),
+            _ => None,
+        })
+    }
+    pub fn get_int_array(&self, name: &str) -> Option<&Vec<i32>> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::IntArray(i) => Some(i),   
+            _ => None,
+        })
+    }
+    pub fn get_long_array(&self, name: &str) -> Option<&Vec<i64>> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::LongArray(l) => Some(l),      
+            _ => None,
+        })
+    }
+    pub fn get_list(&self, name: &str) -> Option<&NbtList> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::List(l) => Some(l),   
+            _ => None,
+        })
+    }
+    pub fn get_compound(&self, name: &str) -> Option<&Vec<NbtField>> {
+        self.get(name).and_then(|f| match &f.value {
+            NbtValue::Compound(c) => Some(c),   
+            _ => None,
+        })
+    }
+
 }
 
 impl std::fmt::Display for NbtField {
