@@ -212,11 +212,10 @@ fn get_full_nbt_field() -> NbtField {
             NbtField::new_list("list_d", NbtList::Long(vec![1 >> 32, 2 >> 32, 3 >> 32])),
             NbtField::new_list("list_e", NbtList::Float(vec![1.0, 2.0, 3.0])),
             NbtField::new_list("list_f", NbtList::Double(vec![1.0, 2.0, 3.0])),
-            NbtField::new_list("list_g", NbtList::String(vec![
-                "1".to_owned(),
-                "2".to_owned(),
-                "3".to_owned(),
-            ])),
+            NbtField::new_list(
+                "list_g",
+                NbtList::String(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()]),
+            ),
             NbtField::new_compound(
                 "the",
                 vec![NbtField::new_compound(
@@ -244,26 +243,157 @@ fn convenience_access() {
     assert_eq!(root.get_short("short_a"), Some(1 >> 8));
     assert_eq!(root.get_long("long_a"), Some(1 >> 32));
     assert_eq!(root.get_byte_array("byte_array_a"), Some(&vec![1, 2, 3]));
-    assert_eq!(root.get_int_array("int_array_a"), Some(&vec![1 >> 16, 2 >> 16, 3 >> 16]));  
-    assert_eq!(root.get_long_array("long_array_a"), Some(&vec![1 >> 32, 2 >> 32, 3 >> 32]));
+    assert_eq!(
+        root.get_int_array("int_array_a"),
+        Some(&vec![1 >> 16, 2 >> 16, 3 >> 16])
+    );
+    assert_eq!(
+        root.get_long_array("long_array_a"),
+        Some(&vec![1 >> 32, 2 >> 32, 3 >> 32])
+    );
     assert_eq!(root.get_list("list_a"), Some(&NbtList::Byte(vec![1, 2, 3])));
-    assert_eq!(root.get_list("list_b"), Some(&NbtList::Short(vec![1 >> 8, 2 >> 8, 3 >> 8])));
-    assert_eq!(root.get_list("list_c"), Some(&NbtList::Int(vec![1 >> 16, 2 >> 16, 3 >> 16])));
-    assert_eq!(root.get_list("list_d"), Some(&NbtList::Long(vec![1 >> 32, 2 >> 32, 3 >> 32])));
-    assert_eq!(root.get_list("list_e"), Some(&NbtList::Float(vec![1.0, 2.0, 3.0])));
-    assert_eq!(root.get_list("list_f"), Some(&NbtList::Double(vec![1.0, 2.0, 3.0])));
-    assert_eq!(root.get_list("list_g"), Some(&NbtList::String(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])));
+    assert_eq!(
+        root.get_list("list_b"),
+        Some(&NbtList::Short(vec![1 >> 8, 2 >> 8, 3 >> 8]))
+    );
+    assert_eq!(
+        root.get_list("list_c"),
+        Some(&NbtList::Int(vec![1 >> 16, 2 >> 16, 3 >> 16]))
+    );
+    assert_eq!(
+        root.get_list("list_d"),
+        Some(&NbtList::Long(vec![1 >> 32, 2 >> 32, 3 >> 32]))
+    );
+    assert_eq!(
+        root.get_list("list_e"),
+        Some(&NbtList::Float(vec![1.0, 2.0, 3.0]))
+    );
+    assert_eq!(
+        root.get_list("list_f"),
+        Some(&NbtList::Double(vec![1.0, 2.0, 3.0]))
+    );
+    assert_eq!(
+        root.get_list("list_g"),
+        Some(&NbtList::String(vec![
+            "1".to_owned(),
+            "2".to_owned(),
+            "3".to_owned()
+        ]))
+    );
 }
 
 #[test]
 fn list_access() {
     let root = get_full_nbt_field();
 
-    assert_eq!(root.get_list("list_a").unwrap().as_byte_list(), Some(&vec![1, 2, 3]));
-    assert_eq!(root.get_list("list_b").unwrap().as_short_list(), Some(&vec![1 >> 8, 2 >> 8, 3 >> 8]));
-    assert_eq!(root.get_list("list_c").unwrap().as_int_list(), Some(&vec![1 >> 16, 2 >> 16, 3 >> 16]));
-    assert_eq!(root.get_list("list_d").unwrap().as_long_list(), Some(&vec![1 >> 32, 2 >> 32, 3 >> 32]));
-    assert_eq!(root.get_list("list_e").unwrap().as_float_list(), Some(&vec![1.0, 2.0, 3.0]));
-    assert_eq!(root.get_list("list_f").unwrap().as_double_list(), Some(&vec![1.0, 2.0, 3.0]));
-    assert_eq!(root.get_list("list_g").unwrap().as_string_list(), Some(&vec!["1".to_owned(), "2".to_owned(), "3".to_owned()]));
+    assert_eq!(
+        root.get_list("list_a").unwrap().as_byte_list(),
+        Some(&vec![1, 2, 3])
+    );
+    assert_eq!(
+        root.get_list("list_b").unwrap().as_short_list(),
+        Some(&vec![1 >> 8, 2 >> 8, 3 >> 8])
+    );
+    assert_eq!(
+        root.get_list("list_c").unwrap().as_int_list(),
+        Some(&vec![1 >> 16, 2 >> 16, 3 >> 16])
+    );
+    assert_eq!(
+        root.get_list("list_d").unwrap().as_long_list(),
+        Some(&vec![1 >> 32, 2 >> 32, 3 >> 32])
+    );
+    assert_eq!(
+        root.get_list("list_e").unwrap().as_float_list(),
+        Some(&vec![1.0, 2.0, 3.0])
+    );
+    assert_eq!(
+        root.get_list("list_f").unwrap().as_double_list(),
+        Some(&vec![1.0, 2.0, 3.0])
+    );
+    assert_eq!(
+        root.get_list("list_g").unwrap().as_string_list(),
+        Some(&vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
+    );
+}
+
+#[test]
+fn field_access() {
+    let root = get_full_nbt_field();
+
+    assert_eq!(root.get("int_a").unwrap().as_i32(), Some(1 >> 16));
+    assert_eq!(root.get("int_b").unwrap().as_i32(), Some(1 >> 16));
+    assert_eq!(
+        root.get("string_a").unwrap().as_string(),
+        Some(&"hello".to_string())
+    );
+    assert_eq!(root.get("bool_a").unwrap().as_bool(), Some(true));
+    assert_eq!(root.get("float_a").unwrap().as_float(), Some(1.0));
+    assert_eq!(root.get("double_a").unwrap().as_double(), Some(1.0));
+    assert_eq!(root.get("short_a").unwrap().as_short(), Some(1 >> 8));
+    assert_eq!(root.get("long_a").unwrap().as_long(), Some(1 >> 32));
+    assert_eq!(
+        root.get("byte_array_a").unwrap().as_byte_array(),
+        Some(&vec![1, 2, 3])
+    );
+    assert_eq!(
+        root.get("int_array_a").unwrap().as_int_array(),
+        Some(&vec![1 >> 16, 2 >> 16, 3 >> 16])
+    );
+    assert_eq!(
+        root.get("long_array_a").unwrap().as_long_array(),
+        Some(&vec![1 >> 32, 2 >> 32, 3 >> 32])
+    );
+
+    assert_eq!(
+        root.get("list_a")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_byte_list(),
+        Some(&vec![1, 2, 3])
+    );
+    assert_eq!(
+        root.get("list_b")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_short_list(),
+        Some(&vec![1 >> 8, 2 >> 8, 3 >> 8])
+    );
+    assert_eq!(
+        root.get("list_c").unwrap().as_list().unwrap().as_int_list(),
+        Some(&vec![1 >> 16, 2 >> 16, 3 >> 16])
+    );
+    assert_eq!(
+        root.get("list_d")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_long_list(),
+        Some(&vec![1 >> 32, 2 >> 32, 3 >> 32])
+    );
+    assert_eq!(
+        root.get("list_e")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_float_list(),
+        Some(&vec![1.0, 2.0, 3.0])
+    );
+    assert_eq!(
+        root.get("list_f")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_double_list(),
+        Some(&vec![1.0, 2.0, 3.0])
+    );
+    assert_eq!(
+        root.get("list_g")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .as_string_list(),
+        Some(&vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
+    );
 }
