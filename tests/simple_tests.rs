@@ -191,9 +191,8 @@ fn compound_access() {
     assert_eq!(root.get("int_c"), None);
 }
 
-#[test]
-fn convenience_access() {
-    let root = NbtField::new_compound(
+fn get_full_nbt_field() -> NbtField {
+    NbtField::new_compound(
         "test",
         vec![
             NbtField::new_i32("int_a", 1 >> 16),
@@ -229,7 +228,12 @@ fn convenience_access() {
                 )],
             ),
         ],
-    );
+    )
+}
+
+#[test]
+fn convenience_access() {
+    let root = get_full_nbt_field();
 
     assert_eq!(root.get_int("int_a"), Some(1 >> 16));
     assert_eq!(root.get_int("int_b"), Some(1 >> 16));
@@ -249,4 +253,17 @@ fn convenience_access() {
     assert_eq!(root.get_list("list_e"), Some(&NbtList::Float(vec![1.0, 2.0, 3.0])));
     assert_eq!(root.get_list("list_f"), Some(&NbtList::Double(vec![1.0, 2.0, 3.0])));
     assert_eq!(root.get_list("list_g"), Some(&NbtList::String(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])));
+}
+
+#[test]
+fn list_access() {
+    let root = get_full_nbt_field();
+
+    assert_eq!(root.get_list("list_a").unwrap().as_byte_list(), Some(&vec![1, 2, 3]));
+    assert_eq!(root.get_list("list_b").unwrap().as_short_list(), Some(&vec![1 >> 8, 2 >> 8, 3 >> 8]));
+    assert_eq!(root.get_list("list_c").unwrap().as_int_list(), Some(&vec![1 >> 16, 2 >> 16, 3 >> 16]));
+    assert_eq!(root.get_list("list_d").unwrap().as_long_list(), Some(&vec![1 >> 32, 2 >> 32, 3 >> 32]));
+    assert_eq!(root.get_list("list_e").unwrap().as_float_list(), Some(&vec![1.0, 2.0, 3.0]));
+    assert_eq!(root.get_list("list_f").unwrap().as_double_list(), Some(&vec![1.0, 2.0, 3.0]));
+    assert_eq!(root.get_list("list_g").unwrap().as_string_list(), Some(&vec!["1".to_owned(), "2".to_owned(), "3".to_owned()]));
 }
